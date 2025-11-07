@@ -37,9 +37,12 @@ FLUXO DE AGENDAMENTO:
 3. Para consultas/teleconsultas:
    - Pergunte especialidade, profissional ou local
    - Busque opções e apresente ao paciente
-   - Liste profissionais e horários disponíveis
-   - Após escolha do horário, solicite login (se não logado)
-   - Confirme dados e finalize
+   - Liste profissionais disponíveis
+   - Após usuário escolher profissional, mostre horários disponíveis
+   - IMPORTANTE: Quando mostrar horários, numere-os (1, 2, 3...) e instrua o usuário a escolher pelo número
+   - Quando usuário escolher um número, SEMPRE use a função selecionar_horario
+   - Se usuário não estiver logado, a função solicitará login automaticamente
+   - Após login, o sistema valida o agendamento automaticamente
 4. Para exames:
    - Pergunte qual exame deseja
    - Permita adicionar múltiplos exames
@@ -176,17 +179,17 @@ const FUNCTIONS = [
   },
   {
     name: 'selecionar_horario',
-    description: 'Seleciona um horário da lista de vagas disponíveis pelo número (índice começando em 1). Use esta função quando o usuário escolher um horário da lista. IMPORTANTE: Após selecionar o horário, se o usuário não estiver logado, solicite o login imediatamente.',
+    description: 'SEMPRE use esta função quando o usuário escolher um número de horário da lista de vagas (ex: 1, 2, primeira opção, primeira data, etc). Esta função seleciona o horário, verifica se o usuário está logado e valida o agendamento automaticamente. NUNCA peça confirmação manual - deixe a função fazer isso.',
     parameters: {
       type: 'object',
       properties: {
         data_escolhida: {
           type: 'string',
-          description: 'Data escolhida no formato YYYY-MM-DD'
+          description: 'Data escolhida no formato YYYY-MM-DD (ex: 2025-11-10). Extraia do contexto das vagas mostradas.'
         },
         numero_horario: {
           type: 'number',
-          description: 'Número do horário escolhido na lista (1, 2, 3, etc)'
+          description: 'Número do horário escolhido na lista começando em 1 (primeira opção = 1, segunda = 2, etc)'
         }
       },
       required: ['data_escolhida', 'numero_horario']

@@ -218,7 +218,13 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           vagas_disponiveis: vagasResult
         });
         
-        const gptVagas = await continuarComGPT(historico, functionCall, vagasResult);
+        // Adiciona contexto para o GPT sobre como proceder
+        const vagasComContexto = {
+          ...vagasResult,
+          _instrucao_gpt: 'IMPORTANTE: Quando o usuário escolher um horário (ex: 1, 2, primeira opção), SEMPRE use a função selecionar_horario com a data no formato YYYY-MM-DD e o número do horário.'
+        };
+        
+        const gptVagas = await continuarComGPT(historico, functionCall, vagasComContexto);
         responseMessage = gptVagas.content;
         
         if (gptVagas.functionCall) {
@@ -402,26 +408,51 @@ const handleSelecionarHorario = async (telefoneCliente, instancia, args, session
       };
     }
     
-    const { data_escolhida, numero_horario } = args;
+    let { data_escolhida, numero_horario } = args;
+    
+    // Converte data_escolhida para o formato usado nas vagas (DD/MM/YYYY)
+    // Se vier como YYYY-MM-DD, converte para DD/MM/YYYY
+    if (data_escolhida && data_escolhida.includes('-')) {
+      const [ano, mes, dia] = data_escolhida.split('-');
+      data_escolhida = `${dia}/${mes}/${ano}`;
+    }
     
     // Busca os horários da data escolhida
-    const horariosData = vagas[data_escolhida];
+    const vagaData = vagas[data_escolhida];
     
-    if (!horariosData || horariosData.length === 0) {
+    if (!vagaData || !vagaData.horarios) {
+      // Tenta encontrar a data em qualquer formato
+      const datasDisponiveis = Object.keys(vagas);
+      logger.warn(`Data ${data_escolhida} não encontrada. Datas disponíveis: ${datasDisponiveis.join(', ')}`);
+      
       return {
         success: false,
-        message: 'Data não encontrada. Por favor, escolha uma data válida da lista.'
+        message: `Data não encontrada. Por favor, escolha uma data válida da lista: ${datasDisponiveis.join(', ')}`
+      };
+    }
+    
+    // Converte objeto de horários para array
+    const horariosArray = Object.entries(vagaData.horarios).map(([hora, dados]) => ({
+      hora,
+      ...dados,
+      data_hora: `${data_escolhida.split('/').reverse().join('-')} ${hora}`
+    }));
+    
+    if (horariosArray.length === 0) {
+      return {
+        success: false,
+        message: 'Nenhum horário disponível para esta data.'
       };
     }
     
     // Pega o horário escolhido (converte de 1-based para 0-based)
     const indexHorario = numero_horario - 1;
-    const horarioEscolhido = horariosData[indexHorario];
+    const horarioEscolhido = horariosArray[indexHorario];
     
     if (!horarioEscolhido) {
       return {
         success: false,
-        message: `Horário não encontrado. Por favor, escolha entre 1 e ${horariosData.length}.`
+        message: `Horário não encontrado. Por favor, escolha entre 1 e ${horariosArray.length}.`
       };
     }
     
