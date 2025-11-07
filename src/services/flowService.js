@@ -250,6 +250,11 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         }
         break;
         
+      case 'selecionar_horario':
+        functionResult = await handleSelecionarHorario(telefoneCliente, instancia, args, session);
+        responseMessage = functionResult.message;
+        break;
+        
       case 'login_paciente':
         functionResult = await handleLogin(telefoneCliente, instancia, args.login, args.senha);
         responseMessage = functionResult.message;
@@ -384,6 +389,88 @@ const continuarComGPT = async (historico, functionCall, functionResult) => {
 };
 
 /**
+ * Seleciona um horário específico das vagas disponíveis
+ */
+const handleSelecionarHorario = async (telefoneCliente, instancia, args, session) => {
+  try {
+    const vagas = session.dados.vagas_disponiveis;
+    
+    if (!vagas) {
+      return {
+        success: false,
+        message: 'Não encontrei vagas disponíveis. Por favor, busque novamente.'
+      };
+    }
+    
+    const { data_escolhida, numero_horario } = args;
+    
+    // Busca os horários da data escolhida
+    const horariosData = vagas[data_escolhida];
+    
+    if (!horariosData || horariosData.length === 0) {
+      return {
+        success: false,
+        message: 'Data não encontrada. Por favor, escolha uma data válida da lista.'
+      };
+    }
+    
+    // Pega o horário escolhido (converte de 1-based para 0-based)
+    const indexHorario = numero_horario - 1;
+    const horarioEscolhido = horariosData[indexHorario];
+    
+    if (!horarioEscolhido) {
+      return {
+        success: false,
+        message: `Horário não encontrado. Por favor, escolha entre 1 e ${horariosData.length}.`
+      };
+    }
+    
+    // Salva o horário escolhido na sessão
+    await sessionService.updateSessionData(telefoneCliente, instancia, {
+      horario_escolhido: horarioEscolhido.data_hora,
+      data_escolhida: data_escolhida
+    });
+    
+    logger.info(`⏰ Horário selecionado: ${horarioEscolhido.data_hora}`);
+    
+    // Verifica se o usuário já está logado
+    const token = session.dados.token;
+    const benef_id = session.dados.benef_id;
+    
+    if (!token || !benef_id) {
+      // Não está logado, solicita login
+      return {
+        success: true,
+        needsLogin: true,
+        message: `✅ Horário selecionado: ${horarioEscolhido.data_hora}
+
+Agora preciso que você faça login para confirmar o agendamento. Por favor, informe seu CPF ou email e sua senha. 🔐`
+      };
+    }
+    
+    // Já está logado, valida automaticamente
+    logger.info('✅ Usuário já logado. Validando agendamento automaticamente...');
+    
+    const sessionAtualizada = await sessionService.getSession(telefoneCliente, instancia);
+    const resultadoValidacao = await handleValidarAgendamento(
+      telefoneCliente,
+      instancia,
+      { data_hora: horarioEscolhido.data_hora },
+      sessionAtualizada
+    );
+    
+    return resultadoValidacao;
+    
+  } catch (error) {
+    logger.error('Erro ao selecionar horário', error);
+    return {
+      success: false,
+      message: 'Erro ao selecionar horário. Tente novamente.'
+    };
+  }
+};
+
+/**
  * Processa login do paciente
  */
 const handleLogin = async (telefoneCliente, instancia, login, senha) => {
@@ -419,6 +506,8 @@ const handleLogin = async (telefoneCliente, instancia, login, senha) => {
       benefData.benef_nome
     );
     
+    logger.info(`🔐 Login: ${benefData.benef_nome} (ID: ${benefData.benef_id})`);
+    
     // Busca termos obrigatórios
     const termos = await oniApiService.buscarTermosBeneficiario(benefData.benef_id, loginResponse.token);
     const termosObrigatorios = termos.filter(t => t.term_aceite === '1' && t.act_aceitou !== '1');
@@ -430,6 +519,27 @@ const handleLogin = async (telefoneCliente, instancia, login, senha) => {
 
 Você precisa aceitar os termos de uso antes de continuar. Por favor, acesse o portal da OniSaúde para aceitar os termos obrigatórios.`
       };
+    }
+    
+    // Busca sessão atualizada para verificar se há agendamento pendente
+    const sessionAtualizada = await sessionService.getSession(telefoneCliente, instancia);
+    
+    // Verifica se há horário escolhido esperando validação
+    const horarioEscolhido = sessionAtualizada.dados.horario_escolhido;
+    
+    if (horarioEscolhido) {
+      logger.info('📅 Horário escolhido detectado. Validando agendamento automaticamente...');
+      
+      // Valida automaticamente o agendamento
+      const resultadoValidacao = await handleValidarAgendamento(
+        telefoneCliente, 
+        instancia, 
+        { data_hora: horarioEscolhido },
+        sessionAtualizada
+      );
+      
+      // Retorna o resultado da validação diretamente
+      return resultadoValidacao;
     }
     
     return {

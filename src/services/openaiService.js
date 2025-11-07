@@ -175,6 +175,24 @@ const FUNCTIONS = [
     }
   },
   {
+    name: 'selecionar_horario',
+    description: 'Seleciona um horário da lista de vagas disponíveis pelo número (índice começando em 1). Use esta função quando o usuário escolher um horário da lista. IMPORTANTE: Após selecionar o horário, se o usuário não estiver logado, solicite o login imediatamente.',
+    parameters: {
+      type: 'object',
+      properties: {
+        data_escolhida: {
+          type: 'string',
+          description: 'Data escolhida no formato YYYY-MM-DD'
+        },
+        numero_horario: {
+          type: 'number',
+          description: 'Número do horário escolhido na lista (1, 2, 3, etc)'
+        }
+      },
+      required: ['data_escolhida', 'numero_horario']
+    }
+  },
+  {
     name: 'login_paciente',
     description: 'Faz login do paciente com CPF/email e senha',
     parameters: {
