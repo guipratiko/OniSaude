@@ -270,8 +270,23 @@ const buscarParcerias = async (parceiro, tipo_parceria, tipo_atendimento, token)
 const verificarRetorno = async (params, token) => {
   try {
     const formData = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
+    
+    // Parâmetros obrigatórios da API (conforme documentação)
+    const retornoParams = {
+      ...params,
+      conv_ans: ONI_CONV_ANS,
+      plano_id: ONI_PLANO_ID,
+      super_id: ONI_SUPER_ID
+    };
+    
+    Object.entries(retornoParams).forEach(([key, value]) => {
       formData.append(key, value);
+    });
+
+    logger.info('🔄 Verificando se é retorno:', {
+      benef_id: retornoParams.benef_id,
+      prof_id: retornoParams.prof_id,
+      data_hora: retornoParams.data_hora
     });
 
     const response = await apiClient.post('/agendaportal/retorno', formData, {
@@ -280,6 +295,9 @@ const verificarRetorno = async (params, token) => {
         'authorization': `Bearer ${token}`
       }
     });
+    
+    logger.info('✅ É retorno?', response.data);
+    
     return response.data;
   } catch (error) {
     logger.error('Erro ao verificar retorno', error);
@@ -290,8 +308,26 @@ const verificarRetorno = async (params, token) => {
 const validarAgendamento = async (params, token) => {
   try {
     const formData = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
+    
+    // Parâmetros obrigatórios da API (conforme documentação)
+    const validacaoParams = {
+      ...params,
+      conv_ans: ONI_CONV_ANS,
+      plano_id: ONI_PLANO_ID,
+      super_id: ONI_SUPER_ID
+    };
+    
+    Object.entries(validacaoParams).forEach(([key, value]) => {
       formData.append(key, value);
+    });
+
+    logger.info('🔍 Enviando validação para API:', {
+      benef_id: validacaoParams.benef_id,
+      prof_id: validacaoParams.prof_id,
+      data_hora: validacaoParams.data_hora,
+      conv_ans: validacaoParams.conv_ans,
+      plano_id: validacaoParams.plano_id,
+      super_id: validacaoParams.super_id
     });
 
     const response = await apiClient.post('/agendaportal/validar', formData, {
@@ -300,6 +336,9 @@ const validarAgendamento = async (params, token) => {
         'authorization': `Bearer ${token}`
       }
     });
+    
+    logger.info('✅ Resposta validação:', response.data);
+    
     return response.data;
   } catch (error) {
     logger.error('Erro ao validar agendamento', error);
@@ -326,12 +365,24 @@ const agendar = async (params, token) => {
       formData.append(key, value);
     });
 
+    logger.info('📝 Enviando agendamento para API:', {
+      benef_id: agendamentoParams.benef_id,
+      prof_id: agendamentoParams.prof_id,
+      data_hora: agendamentoParams.data_hora,
+      conv_ans: agendamentoParams.conv_ans,
+      plano_id: agendamentoParams.plano_id,
+      super_id: agendamentoParams.super_id
+    });
+
     const response = await apiClient.post('/agendaportal/agendar', formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'authorization': `Bearer ${token}`
       }
     });
+    
+    logger.info('✅ Resposta agendamento:', response.data);
+    
     return response.data;
   } catch (error) {
     logger.error('Erro ao agendar', error);
