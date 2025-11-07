@@ -75,14 +75,16 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           proc_codigo: args.proc_codigo
         });
         
-        // Atualiza sessão com município encontrado (incluindo UF)
+        // Atualiza sessão com município encontrado (incluindo UF) e proc_codigo
         if (functionResult && functionResult.length > 0) {
           await sessionService.updateSessionData(telefoneCliente, instancia, {
             munic_id: functionResult[0].munic_id,
             munic_nome: functionResult[0].munic_nome,
-            munic_uf: functionResult[0].munic_uf
+            munic_uf: functionResult[0].munic_uf,
+            proc_codigo: args.proc_codigo // Salva tipo de serviço (consulta/teleconsulta)
           });
           logger.info(`🔧 [DEBUG] Município salvo: ${functionResult[0].munic_nome}, ${functionResult[0].munic_uf}`);
+          logger.info(`🔧 [DEBUG] Proc_codigo salvo: ${args.proc_codigo}`);
         }
         
         const gptResult1 = await continuarComGPT(historico, functionCall, functionResult);
@@ -98,9 +100,15 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         
       case 'buscar_profissionais_especialidades':
         logger.info(`🔧 [DEBUG] Buscando profissionais/especialidades...`);
+        
+        // Sempre usa munic_id da sessão (numérico), nunca o que o GPT enviar
+        const municIdBusca = session.dados.munic_id || ONI_MUNIC_GOIANIA;
+        
+        logger.info(`🔧 [DEBUG] Usando munic_id da sessão: ${municIdBusca}`);
+        
         functionResult = await oniApiService.buscarProfEspLocal({
           nome: args.nome,
-          munic_id: args.munic_id || session.dados.munic_id || ONI_MUNIC_GOIANIA,
+          munic_id: municIdBusca,
           proc_codigo: args.proc_codigo
         });
         
