@@ -8,6 +8,7 @@ router.get('/api/sessions/:telefone/:instancia', dashboardController.getSessionD
 router.post('/api/sessions/clear', dashboardController.clearAllSessions);
 router.delete('/api/sessions/:telefone/:instancia', dashboardController.clearSession);
 router.get('/api/stats', dashboardController.getStats);
+router.get('/api/logs', dashboardController.getLogs);
 
 module.exports = router;
 

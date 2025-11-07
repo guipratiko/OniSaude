@@ -126,11 +126,41 @@ const getStats = async (req, res) => {
   }
 };
 
+/**
+ * Retorna logs recentes
+ */
+const getLogs = async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(__dirname, '../../logs/combined.log');
+    
+    // Lê últimas 100 linhas do log
+    const logContent = fs.readFileSync(logPath, 'utf8');
+    const lines = logContent.trim().split('\n');
+    const recentLines = lines.slice(-100).reverse(); // Últimas 100, mais recentes primeiro
+    
+    const logs = recentLines.map(line => {
+      try {
+        return JSON.parse(line);
+      } catch (e) {
+        return { message: line, level: 'info', timestamp: new Date().toISOString() };
+      }
+    });
+    
+    res.json({ logs });
+  } catch (error) {
+    logger.error('Erro ao buscar logs', error);
+    res.json({ logs: [] });
+  }
+};
+
 module.exports = {
   getSessions,
   getSessionDetails,
   clearAllSessions,
   clearSession,
-  getStats
+  getStats,
+  getLogs
 };
 

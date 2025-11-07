@@ -29,6 +29,11 @@ function startPolling() {
             .catch(err => console.error('Erro ao buscar stats:', err));
     }, 5000);
     
+    // Atualiza logs a cada 3 segundos
+    setInterval(() => {
+        fetchLogs();
+    }, 3000);
+    
     // Primeira carga
     requestInitialData();
 }
@@ -322,11 +327,17 @@ function escapeHtml(text) {
     return String(text).replace(/[&<>"']/g, m => map[m]);
 }
 
-// Busca logs do servidor (simulado por enquanto)
+// Busca logs do servidor
 function fetchLogs() {
-    // Por enquanto, simula logs vazios
-    // TODO: Implementar endpoint para buscar logs reais
-    renderLogs();
+    fetch('/api/logs')
+        .then(res => res.json())
+        .then(data => {
+            if (data.logs) {
+                logs = data.logs;
+                renderLogs();
+            }
+        })
+        .catch(err => console.error('Erro ao buscar logs:', err));
 }
 
 // Inicialização
