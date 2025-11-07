@@ -20,7 +20,7 @@ const getSession = async (telefoneCliente, instancia) => {
     const sessionData = await redis.get(key);
     
     if (sessionData) {
-      logger.info(`Sessão recuperada: ${key}`);
+      // Sessão recuperada (não loga para evitar spam)
       return JSON.parse(sessionData);
     }
     
@@ -36,7 +36,7 @@ const getSession = async (telefoneCliente, instancia) => {
     };
     
     await saveSession(telefoneCliente, instancia, newSession);
-    logger.info(`Nova sessão criada: ${key}`);
+    logger.info(`✨ Nova sessão criada: ${key}`);
     
     return newSession;
   } catch (error) {
@@ -61,7 +61,7 @@ const saveSession = async (telefoneCliente, instancia, sessionData) => {
       JSON.stringify(sessionData)
     );
     
-    logger.info(`Sessão salva: ${key}`);
+    // Não loga para evitar spam
   } catch (error) {
     logger.error('Erro ao salvar sessão', error);
     throw error;
@@ -76,7 +76,7 @@ const updateSessionState = async (telefoneCliente, instancia, novoEstado) => {
     const session = await getSession(telefoneCliente, instancia);
     session.estado = novoEstado;
     await saveSession(telefoneCliente, instancia, session);
-    logger.info(`Estado atualizado para ${novoEstado}: ${createSessionKey(telefoneCliente, instancia)}`);
+    logger.info(`🔄 Estado: ${novoEstado}`);
   } catch (error) {
     logger.error('Erro ao atualizar estado', error);
     throw error;
@@ -94,7 +94,7 @@ const updateSessionData = async (telefoneCliente, instancia, dadosNovos) => {
       ...dadosNovos
     };
     await saveSession(telefoneCliente, instancia, session);
-    logger.info(`Dados atualizados: ${createSessionKey(telefoneCliente, instancia)}`);
+    // Não loga para evitar spam
   } catch (error) {
     logger.error('Erro ao atualizar dados', error);
     throw error;
@@ -192,7 +192,7 @@ const saveAuthToken = async (telefoneCliente, instancia, token, benefId, benefNo
     session.dados.benef_nome = benefNome;
     session.dados.autenticado = true;
     await saveSession(telefoneCliente, instancia, session);
-    logger.info(`Token salvo para beneficiário ${benefId}: ${createSessionKey(telefoneCliente, instancia)}`);
+    logger.info(`🔐 Login: ${benefNome} (ID: ${benefId})`);
   } catch (error) {
     logger.error('Erro ao salvar token', error);
     throw error;

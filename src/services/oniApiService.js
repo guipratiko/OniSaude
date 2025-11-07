@@ -20,25 +20,14 @@ const apiClient = axios.create({
   }
 });
 
-// Interceptor para logging
-apiClient.interceptors.request.use((config) => {
-  logger.info(`API Request: ${config.method.toUpperCase()} ${config.url}`, {
-    params: config.params,
-    data: config.data
-  });
-  return config;
-});
-
+// Interceptor para logging (apenas erros)
 apiClient.interceptors.response.use(
   (response) => {
-    logger.info(`API Response: ${response.config.url}`, {
-      status: response.status,
-      data: response.data
-    });
+    // Não loga sucesso, apenas retorna
     return response;
   },
   (error) => {
-    logger.error(`API Error: ${error.config?.url}`, {
+    logger.error(`❌ API Error: ${error.config?.url}`, {
       message: error.message,
       response: error.response?.data
     });

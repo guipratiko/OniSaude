@@ -57,17 +57,12 @@ const processUserMessage = async (telefoneCliente, mensagem, instancia, nome) =>
 const handleFunctionCall = async (telefoneCliente, instancia, functionCall, session, historico) => {
   const { name, arguments: args } = functionCall;
   
-  logger.info(`🔧 [DEBUG] Executando função: ${name}`, { args });
-  logger.info(`🔧 [DEBUG] Sessão atual:`, { 
-    estado: session.estado, 
-    dados_salvos: Object.keys(session.dados) 
-  });
+  logger.info(`🎯 Executando: ${name}`);
   
   let functionResult;
   let responseMessage;
   
   try {
-    logger.info(`🔧 [DEBUG] Entrando no switch para função: ${name}`);
     switch (name) {
       case 'buscar_municipios':
         functionResult = await oniApiService.buscarMunicipios({
@@ -83,8 +78,7 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
             munic_uf: functionResult[0].munic_uf,
             proc_codigo: args.proc_codigo // Salva tipo de serviço (consulta/teleconsulta)
           });
-          logger.info(`🔧 [DEBUG] Município salvo: ${functionResult[0].munic_nome}, ${functionResult[0].munic_uf}`);
-          logger.info(`🔧 [DEBUG] Proc_codigo salvo: ${args.proc_codigo}`);
+          logger.info(`📍 Cidade: ${functionResult[0].munic_nome}, ${functionResult[0].munic_uf}`);
         }
         
         const gptResult1 = await continuarComGPT(historico, functionCall, functionResult);
@@ -92,19 +86,14 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         
         // Se GPT quer chamar outra função, executa recursivamente
         if (gptResult1.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult1.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult1.functionCall, session, historico);
-          return; // Não envia mensagem agora, a próxima função vai enviar
+          return;
         }
         break;
         
       case 'buscar_profissionais_especialidades':
-        logger.info(`🔧 [DEBUG] Buscando profissionais/especialidades...`);
-        
         // Sempre usa munic_id da sessão (numérico), nunca o que o GPT enviar
         const municIdBusca = session.dados.munic_id || ONI_MUNIC_GOIANIA;
-        
-        logger.info(`🔧 [DEBUG] Usando munic_id da sessão: ${municIdBusca}`);
         
         functionResult = await oniApiService.buscarProfEspLocal({
           nome: args.nome,
@@ -112,29 +101,26 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           proc_codigo: args.proc_codigo
         });
         
-        logger.info(`🔧 [DEBUG] Resultado da busca:`, { resultados: functionResult?.length || 0 });
+        if (functionResult?.length > 0) {
+          logger.info(`✅ Encontrado: ${functionResult.length} opção(ões)`);
+        }
         const gptResult2 = await continuarComGPT(historico, functionCall, functionResult);
         responseMessage = gptResult2.content;
         
         // Se GPT quer chamar outra função, executa recursivamente
         if (gptResult2.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult2.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult2.functionCall, session, historico);
           return;
         }
         
-        logger.info(`🔧 [DEBUG] Resposta do GPT gerada com sucesso`);
         break;
         
       case 'listar_profissionais':
-        logger.info(`🔧 [DEBUG] Listando profissionais...`);
-        
         // Monta localização no formato "Cidade, UF"
         const municNome = session.dados.munic_nome || 'Goiânia';
         const municUF = session.dados.munic_uf || 'GO';
         const localizacao = `${municNome}, ${municUF}`;
         
-        logger.info(`🔧 [DEBUG] Localização construída: ${localizacao}`);
         
         functionResult = await oniApiService.listarProfissionais({
           esp_id: args.esp_id,
@@ -146,18 +132,16 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           proc_codigo: args.proc_codigo
         });
         
-        logger.info(`🔧 [DEBUG] Profissionais encontrados:`, { 
-          total: functionResult?.profs ? Object.keys(functionResult.profs).length : 0 
-        });
-        
         // Salva lista de profissionais na sessão para referência futura
         if (functionResult?.profs && Object.keys(functionResult.profs).length > 0) {
+          const totalProfs = Object.keys(functionResult.profs).length;
+          logger.info(`👨‍⚕️ ${totalProfs} profissional(is) encontrado(s)`);
+          
           await sessionService.updateSessionData(telefoneCliente, instancia, {
             profissionais_disponiveis: functionResult.profs,
             unidades_disponiveis: functionResult.unidades,
-            esp_id: args.esp_id // Salva esp_id usado na busca
+            esp_id: args.esp_id
           });
-          logger.info(`🔧 [DEBUG] Profissionais salvos na sessão`);
         }
         
         const gptResult3 = await continuarComGPT(historico, functionCall, functionResult);
@@ -165,16 +149,14 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         
         // Se GPT quer chamar outra função, executa recursivamente
         if (gptResult3.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult3.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptResult3.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult3.functionCall, session, historico);
           return;
         }
         
-        logger.info(`🔧 [DEBUG] Resposta do GPT gerada com sucesso`);
         break;
         
       case 'selecionar_profissional':
-        logger.info(`🔧 [DEBUG] Selecionando profissional número: ${args.numero_escolhido}`);
         
         // Busca profissionais salvos na sessão
         const profsDisponiveis = session.dados.profissionais_disponiveis;
@@ -205,11 +187,7 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           proc_vlr: profEscolhido.proc_vlr
         });
         
-        logger.info(`🔧 [DEBUG] Profissional selecionado:`, {
-          prof_id: profEscolhido.prof_id,
-          prof_nome: profEscolhido.prof_nome,
-          cli_id: unidadeId
-        });
+        logger.info(`✅ Selecionado: ${profEscolhido.prof_nome}`);
         
         responseMessage = `✅ Profissional selecionado: ${profEscolhido.prof_nome}\n\nAgora vou buscar os horários disponíveis...`;
         
@@ -230,9 +208,10 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
           data_final: dataFinal.toISOString().split('T')[0]
         });
         
-        logger.info(`🔧 [DEBUG] Vagas encontradas:`, {
-          datas: Object.keys(vagasResult || {}).length
-        });
+        const totalDatas = Object.keys(vagasResult || {}).length;
+        if (totalDatas > 0) {
+          logger.info(`📅 ${totalDatas} data(s) com vagas`);
+        }
         
         // Salva vagas na sessão
         await sessionService.updateSessionData(telefoneCliente, instancia, {
@@ -243,7 +222,7 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         responseMessage = gptVagas.content;
         
         if (gptVagas.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptVagas.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptVagas.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptVagas.functionCall, session, historico);
           return;
         }
@@ -265,7 +244,7 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         responseMessage = gptResult4.content;
         
         if (gptResult4.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult4.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptResult4.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult4.functionCall, session, historico);
           return;
         }
@@ -278,12 +257,20 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         
       case 'buscar_dependentes':
         const token = session.dados.token;
-        functionResult = await oniApiService.listarDependentes(args.benef_id, token);
+        // SEMPRE usa benef_id da sessão (nunca o que o GPT envia)
+        const benef_id_dep = session.dados.benef_id;
+        
+        if (!benef_id_dep) {
+          responseMessage = '❌ Você precisa fazer login antes de buscar dependentes. Por favor, faça login primeiro.';
+          break;
+        }
+        
+        functionResult = await oniApiService.listarDependentes(benef_id_dep, token);
         const gptResult5 = await continuarComGPT(historico, functionCall, functionResult);
         responseMessage = gptResult5.content;
         
         if (gptResult5.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult5.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptResult5.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult5.functionCall, session, historico);
           return;
         }
@@ -314,14 +301,15 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         responseMessage = gptResult6.content;
         
         if (gptResult6.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult6.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptResult6.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult6.functionCall, session, historico);
           return;
         }
         break;
         
       case 'criar_pedido_exames':
-        functionResult = await handleCriarPedidoExames(telefoneCliente, instancia, args.benef_id, session);
+        // SEMPRE usa benef_id da sessão (nunca o que o GPT envia)
+        functionResult = await handleCriarPedidoExames(telefoneCliente, instancia, session);
         responseMessage = functionResult.message;
         break;
         
@@ -336,7 +324,7 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
         responseMessage = gptResult7.content;
         
         if (gptResult7.functionCall) {
-          logger.info(`🔧 [DEBUG] GPT quer chamar outra função: ${gptResult7.functionCall.name}`);
+          logger.info(` GPT quer chamar outra função: ${gptResult7.functionCall.name}`);
           await handleFunctionCall(telefoneCliente, instancia, gptResult7.functionCall, session, historico);
           return;
         }
@@ -347,21 +335,13 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
     }
     
     // Envia resposta
-    logger.info(`🔧 [DEBUG] Preparando para enviar resposta...`, { 
-      temResposta: !!responseMessage 
-    });
-    
     if (responseMessage) {
-      logger.info(`🔧 [DEBUG] Enviando resposta ao usuário`);
       await whatsappService.enviarMensagem(telefoneCliente, responseMessage, instancia);
       await sessionService.addMessageToHistory(telefoneCliente, instancia, 'assistant', responseMessage);
-      logger.info(`🔧 [DEBUG] Resposta enviada e histórico atualizado`);
-    } else {
-      logger.warn(`🔧 [DEBUG] Nenhuma resposta gerada pela função ${name}`);
     }
     
   } catch (error) {
-    logger.error(`❌ [DEBUG] Erro ao executar função ${name}`, error);
+    logger.error(`❌ Erro ao executar função ${name}`, error);
     await whatsappService.enviarMensagemErro(telefoneCliente, instancia);
   }
 };
@@ -372,14 +352,6 @@ const handleFunctionCall = async (telefoneCliente, instancia, functionCall, sess
  */
 const continuarComGPT = async (historico, functionCall, functionResult) => {
   try {
-    logger.info(`🔧 [DEBUG] continuarComGPT - Função: ${functionCall.name}`);
-    logger.info(`🔧 [DEBUG] Resultado recebido:`, { 
-      tipo: typeof functionResult,
-      isArray: Array.isArray(functionResult),
-      length: functionResult?.length,
-      keys: typeof functionResult === 'object' ? Object.keys(functionResult).slice(0, 5) : null
-    });
-    
     const messages = [
       ...historico,
       {
@@ -397,13 +369,8 @@ const continuarComGPT = async (historico, functionCall, functionResult) => {
       }
     ];
     
-    logger.info(`🔧 [DEBUG] Chamando GPT para processar resultado...`);
     // Mantém as funções disponíveis para o GPT poder continuar chamando se necessário
     const response = await openaiService.processMessage(messages);
-    logger.info(`🔧 [DEBUG] GPT respondeu:`, { 
-      temConteudo: !!response.content,
-      temFunctionCall: !!response.functionCall
-    });
     
     // Retorna tanto o conteúdo quanto a possível nova chamada de função
     return {
@@ -487,7 +454,15 @@ Olá ${benefData.benef_nome}! Agora podemos continuar com seu agendamento. 📅`
 const handleValidarAgendamento = async (telefoneCliente, instancia, params, session) => {
   try {
     const token = session.dados.token;
-    const benef_id = params.benef_id || session.dados.benef_id;
+    // SEMPRE usa benef_id da sessão autenticada (nunca o que o GPT envia)
+    const benef_id = session.dados.benef_id;
+    
+    if (!benef_id) {
+      return {
+        success: false,
+        message: '❌ Você precisa fazer login antes de agendar. Por favor, faça login primeiro.'
+      };
+    }
     
     // Usa IDs salvos na sessão se não fornecidos
     const validacaoParams = {
@@ -501,7 +476,7 @@ const handleValidarAgendamento = async (telefoneCliente, instancia, params, sess
       benef_id
     };
     
-    logger.info(`🔧 [DEBUG] Validando com parâmetros:`, validacaoParams);
+    logger.info(`🔍 Validando agendamento para benef_id: ${benef_id}`);
     
     const validacao = await oniApiService.validarAgendamento(validacaoParams, token);
     
@@ -536,7 +511,15 @@ const handleValidarAgendamento = async (telefoneCliente, instancia, params, sess
 const handleConfirmarAgendamento = async (telefoneCliente, instancia, params, session) => {
   try {
     const token = session.dados.token;
-    const benef_id = params.benef_id || session.dados.benef_id;
+    // SEMPRE usa benef_id da sessão autenticada (nunca o que o GPT envia)
+    const benef_id = session.dados.benef_id;
+    
+    if (!benef_id) {
+      return {
+        success: false,
+        message: '❌ Você precisa fazer login antes de agendar. Por favor, faça login primeiro.'
+      };
+    }
     
     // Usa IDs salvos na sessão se não fornecidos
     const agendarParams = {
@@ -550,7 +533,7 @@ const handleConfirmarAgendamento = async (telefoneCliente, instancia, params, se
       benef_id
     };
     
-    logger.info(`🔧 [DEBUG] Agendando com parâmetros:`, agendarParams);
+    logger.info(`✅ Confirmando agendamento para benef_id: ${benef_id}`);
     
     const resultado = await oniApiService.agendar(agendarParams, token);
     
@@ -603,10 +586,19 @@ Obrigado por escolher a OniSaúde! 💙`
 /**
  * Cria pedido de exames
  */
-const handleCriarPedidoExames = async (telefoneCliente, instancia, benef_id, session) => {
+const handleCriarPedidoExames = async (telefoneCliente, instancia, session) => {
   try {
     const token = session.dados.token;
+    // SEMPRE usa benef_id da sessão autenticada
+    const benef_id = session.dados.benef_id;
     const carrinho = session.dados.carrinhoExames || [];
+    
+    if (!benef_id) {
+      return {
+        success: false,
+        message: '❌ Você precisa fazer login antes de criar o pedido. Por favor, faça login primeiro.'
+      };
+    }
     
     if (carrinho.length === 0) {
       return {
@@ -614,6 +606,8 @@ const handleCriarPedidoExames = async (telefoneCliente, instancia, benef_id, ses
         message: 'Seu carrinho está vazio. Adicione exames antes de finalizar.'
       };
     }
+    
+    logger.info(`🔍 Criando pedido de exames para benef_id: ${benef_id}`);
     
     const resultado = await oniApiService.criarPedidoExames(benef_id, carrinho, token);
     

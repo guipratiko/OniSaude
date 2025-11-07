@@ -194,52 +194,44 @@ const FUNCTIONS = [
   },
   {
     name: 'buscar_dependentes',
-    description: 'Busca lista de dependentes do beneficiário titular',
+    description: 'Busca lista de dependentes do beneficiário titular logado. O benef_id será obtido automaticamente da sessão.',
     parameters: {
       type: 'object',
-      properties: {
-        benef_id: {
-          type: 'string',
-          description: 'ID do beneficiário'
-        }
-      },
-      required: ['benef_id']
+      properties: {}
     }
   },
   {
     name: 'validar_agendamento',
-    description: 'Valida se é possível realizar o agendamento com os parâmetros fornecidos',
+    description: 'Valida se é possível realizar o agendamento com os parâmetros fornecidos. O benef_id será obtido automaticamente da sessão do usuário logado. Só utilize esta função se o paciente já estiver autenticado.',
     parameters: {
       type: 'object',
       properties: {
-        cli_id: { type: 'string' },
-        prof_id: { type: 'string' },
-        esp_id: { type: 'string' },
-        benef_id: { type: 'string' },
-        tblproced_id: { type: 'string' },
-        proc_codigo: { type: 'string' },
+        cli_id: { type: 'string', description: 'ID da clínica (disponível na sessão)' },
+        prof_id: { type: 'string', description: 'ID do profissional (disponível na sessão)' },
+        esp_id: { type: 'string', description: 'ID da especialidade (disponível na sessão)' },
+        tblproced_id: { type: 'string', description: 'ID da tabela de procedimentos (geralmente 1)' },
+        proc_codigo: { type: 'string', description: 'Código do procedimento (disponível na sessão)' },
         data_hora: { type: 'string', description: 'Formato: YYYY-MM-DD HH:mm' },
-        tpa_id: { type: 'string' }
+        tpa_id: { type: 'string', description: 'ID do tipo de atendimento (geralmente 1)' }
       },
-      required: ['cli_id', 'prof_id', 'esp_id', 'benef_id', 'proc_codigo', 'data_hora']
+      required: ['data_hora']
     }
   },
   {
     name: 'confirmar_agendamento',
-    description: 'Confirma o agendamento após validação bem-sucedida',
+    description: 'Confirma o agendamento após validação bem-sucedida. O benef_id será obtido automaticamente da sessão do usuário logado. Só utilize esta função após o agendamento ter sido validado com sucesso.',
     parameters: {
       type: 'object',
       properties: {
-        cli_id: { type: 'string' },
-        prof_id: { type: 'string' },
-        esp_id: { type: 'string' },
-        benef_id: { type: 'string' },
-        tblproced_id: { type: 'string' },
-        proc_codigo: { type: 'string' },
-        data_hora: { type: 'string' },
-        tpa_id: { type: 'string' }
+        cli_id: { type: 'string', description: 'ID da clínica (disponível na sessão)' },
+        prof_id: { type: 'string', description: 'ID do profissional (disponível na sessão)' },
+        esp_id: { type: 'string', description: 'ID da especialidade (disponível na sessão)' },
+        tblproced_id: { type: 'string', description: 'ID da tabela de procedimentos (geralmente 1)' },
+        proc_codigo: { type: 'string', description: 'Código do procedimento (disponível na sessão)' },
+        data_hora: { type: 'string', description: 'Formato: YYYY-MM-DD HH:mm' },
+        tpa_id: { type: 'string', description: 'ID do tipo de atendimento (geralmente 1)' }
       },
-      required: ['cli_id', 'prof_id', 'esp_id', 'benef_id', 'proc_codigo', 'data_hora']
+      required: ['data_hora']
     }
   },
   {
@@ -262,16 +254,10 @@ const FUNCTIONS = [
   },
   {
     name: 'criar_pedido_exames',
-    description: 'Cria pedido com os exames selecionados (do carrinho)',
+    description: 'Cria pedido com os exames selecionados (do carrinho). O benef_id será obtido automaticamente da sessão do usuário logado. Só utilize esta função se o paciente já estiver autenticado.',
     parameters: {
       type: 'object',
-      properties: {
-        benef_id: {
-          type: 'string',
-          description: 'ID do beneficiário'
-        }
-      },
-      required: ['benef_id']
+      properties: {}
     }
   },
   {
@@ -314,10 +300,7 @@ const FUNCTIONS = [
  */
 const processMessage = async (messages, availableFunctions = FUNCTIONS) => {
   try {
-    logger.info('Chamando OpenAI GPT-4o', {
-      messageCount: messages.length
-    });
-
+    // Chamada ao GPT
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -332,10 +315,10 @@ const processMessage = async (messages, availableFunctions = FUNCTIONS) => {
 
     const assistantMessage = response.choices[0].message;
 
-    logger.info('Resposta OpenAI recebida', {
-      hasContent: !!assistantMessage.content,
-      hasFunctionCall: !!assistantMessage.function_call
-    });
+    // Log apenas se chamar função
+    if (assistantMessage.function_call) {
+      logger.info(`🤖 GPT chamando: ${assistantMessage.function_call.name}`);
+    }
 
     return {
       content: assistantMessage.content,

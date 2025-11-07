@@ -13,8 +13,7 @@ const enviarMensagem = async (telefoneCliente, mensagem, instancia, retries = 3)
       instancia
     };
 
-    logger.info(`Enviando mensagem WhatsApp para ${telefoneCliente}`, { payload });
-
+    // Envia mensagem (não loga para evitar spam)
     const response = await axios.post(WHATSAPP_SEND_URL, payload, {
       headers: {
         'Content-Type': 'application/json'
@@ -22,9 +21,7 @@ const enviarMensagem = async (telefoneCliente, mensagem, instancia, retries = 3)
       timeout: 10000
     });
 
-    logger.info(`Mensagem enviada com sucesso para ${telefoneCliente}`, {
-      status: response.status
-    });
+    logger.info(`📤 Mensagem enviada`);
 
     return response.data;
   } catch (error) {
@@ -60,7 +57,7 @@ const enviarMensagensSequencial = async (telefoneCliente, mensagens, instancia, 
       }
     }
     
-    logger.info(`${mensagens.length} mensagens enviadas sequencialmente para ${telefoneCliente}`);
+    // Não loga para evitar spam
   } catch (error) {
     logger.error('Erro ao enviar mensagens sequenciais', error);
     throw error;

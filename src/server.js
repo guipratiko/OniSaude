@@ -23,9 +23,13 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 // Serve arquivos estáticos do dashboard
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Logging de requisições (exceto arquivos estáticos)
+// Logging de requisições (apenas webhooks e ações importantes)
 app.use((req, res, next) => {
-  if (!req.path.match(/\.(css|js|ico|png|jpg)$/)) {
+  // Não loga requisições do dashboard e arquivos estáticos
+  if (!req.path.match(/\.(css|js|ico|png|jpg)$/) && 
+      !req.path.startsWith('/api/') &&
+      !req.path === '/health' &&
+      !req.path === '/') {
     logger.info(`${req.method} ${req.path}`, {
       ip: req.ip,
       userAgent: req.get('user-agent')
