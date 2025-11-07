@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OniSaúde - Dashboard de Monitoramento</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 OniSaúde - Dashboard de Monitoramento</h1>
+            <div class="status">
+                <span id="connection-status" class="status-badge disconnected">● Desconectado</span>
+                <span id="last-update">Última atualização: --</span>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Sessões Ativas</div>
+                <div class="stat-value" id="total-sessions">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Mensagens Hoje</div>
+                <div class="stat-value" id="total-messages">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Agendamentos</div>
+                <div class="stat-value" id="total-appointments">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Taxa de Sucesso</div>
+                <div class="stat-value" id="success-rate">0%</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Sessões Ativas -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📱 Sessões Ativas</h2>
+                    <button onclick="refreshSessions()" class="btn-refresh">🔄 Atualizar</button>
+                </div>
+                <div class="panel-content">
+                    <div id="sessions-list" class="sessions-list">
+                        <p class="empty-state">Nenhuma sessão ativa</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico da Sessão -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>💬 Histórico da Conversa</h2>
+                    <button onclick="clearSelectedSession()" class="btn-clear">✖ Limpar Seleção</button>
+                </div>
+                <div class="panel-content">
+                    <div id="session-details" class="session-details">
+                        <p class="empty-state">Selecione uma sessão para ver o histórico</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs em Tempo Real -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <h2>📋 Logs em Tempo Real</h2>
+                <div>
+                    <button onclick="clearLogs()" class="btn-clear">🗑 Limpar</button>
+                    <button onclick="toggleAutoScroll()" class="btn-toggle" id="autoscroll-btn">📜 Auto-scroll: ON</button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div id="logs-container" class="logs-container"></div>
+            </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <h2>⚙️ Controles</h2>
+            </div>
+            <div class="panel-content controls">
+                <button onclick="clearAllSessions()" class="btn-danger">🗑 Limpar Todas as Sessões</button>
+                <button onclick="exportLogs()" class="btn-secondary">💾 Exportar Logs</button>
+                <button onclick="testConnection()" class="btn-primary">🔌 Testar Conexão</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
+
